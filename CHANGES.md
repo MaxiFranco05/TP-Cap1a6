@@ -93,7 +93,7 @@ Paso │ Agente A (Core & Dominio)            │ Agente B (Inventario & Cliente
 ## FASE 0 — Cimientos y Configuración
 
 ### [C-01] `foundation-setup`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` completado (archivado `2026-10-27-c-01-foundation-setup`)
 - **Scope**: Scaffolding del monorepo + configuración centralizada + lifespan ASGI + health checks
   - Scaffolding del proyecto y configuración de dependencias en `requirements.txt`: Python 3.12, FastAPI >=0.111, SQLModel >=0.0.24, SQLAlchemy 2.0 (asincrónico), asyncpg >=0.30, Alembic >=1.13, pydantic-settings >=2.0, bcrypt >=4.0, PyJWT >=2.8, uvicorn
   - Módulo `app/core/config.py`: Definición de clase `Settings(BaseSettings)` con tipado estricto para `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `POSTGRES_HOST`, `POSTGRES_PORT`, `JWT_SECRET_KEY`, `JWT_ALGORITHM`, `JWT_EXPIRATION_SECONDS`, `COOKIE_SECURE`, `BCRYPT_ROUNDS`, `BCRYPT_MAX_CONCURRENCY`, `DB_POOL_SIZE`, `SQL_ECHO` y `@computed_field` para `DATABASE_URL` asincrónica (`postgresql+asyncpg://`)
