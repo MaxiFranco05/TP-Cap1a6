@@ -1,0 +1,35 @@
+### Health Check - Liveness Probe
+# Verifica que el proceso web FastAPI esté en ejecución y receptivo (no consulta DB)
+GET http://localhost:8000/health/live
+Accept: application/json
+
+# Respuesta esperada:
+# HTTP/1.1 200 OK
+# Content-Type: application/json
+#
+# {
+#   "status": "live"
+# }
+
+###
+
+### Health Check - Readiness Probe
+# Valida la conectividad activa con PostgreSQL mediante SELECT 1 con timeout
+GET http://localhost:8000/health/ready
+Accept: application/json
+
+# Respuesta esperada (con base de datos operativa):
+# HTTP/1.1 200 OK
+# Content-Type: application/json
+#
+# {
+#   "status": "ready"
+# }
+
+# Respuesta esperada (con base de datos caída o saturada):
+# HTTP/1.1 503 Service Unavailable
+# Content-Type: application/json
+#
+# {
+#   "status": "database unavailable"
+# }
