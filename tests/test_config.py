@@ -18,6 +18,7 @@ def test_settings_loaded_with_valid_values():
         BCRYPT_MAX_CONCURRENCY=2,
         DB_POOL_SIZE=5,
         SQL_ECHO=True,
+        _env_file=None,
     )
     assert settings.POSTGRES_USER == "test_user"
     assert settings.POSTGRES_PASSWORD == "test_password"
@@ -40,6 +41,7 @@ def test_settings_default_values():
         POSTGRES_PASSWORD="secure_password",
         POSTGRES_DB="taller_db",
         JWT_SECRET_KEY="another_secret",
+        _env_file=None,
     )
     assert settings.POSTGRES_HOST == "localhost"
     assert settings.POSTGRES_PORT == 5432
@@ -60,6 +62,7 @@ def test_computed_database_url():
         POSTGRES_HOST="127.0.0.1",
         POSTGRES_PORT=5432,
         JWT_SECRET_KEY="secret",
+        _env_file=None,
     )
     expected_url = "postgresql+asyncpg://app_user:mypassword@127.0.0.1:5432/workshop"
     assert settings.DATABASE_URL == expected_url

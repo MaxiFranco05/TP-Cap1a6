@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: taller_mecanico_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-taller_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-taller_pass_local}
+      POSTGRES_DB: ${POSTGRES_DB:-taller_db}
+    ports:
+      - "${POSTGRES_PORT:-5434}:5432"
+    volumes:
+      - taller_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-taller_user} -d $${POSTGRES_DB:-taller_db}"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  taller_pgdata:
