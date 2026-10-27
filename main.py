@@ -7,7 +7,12 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.exc import DataError, IntegrityError
 from app.core.config import get_settings
 from app.core.database import create_engine, create_session_factory
+import app.modules.clientes.models  # noqa: F401
+from app.modules.clientes.router import router as clientes_router
 from app.modules.health.router import router as health_router
+import app.modules.ordenes.models  # noqa: F401
+import app.modules.repuestos.models  # noqa: F401
+import app.modules.usuarios.models  # noqa: F401
 
 
 @asynccontextmanager
@@ -73,6 +78,7 @@ router_abierto = APIRouter()
 router_abierto.include_router(health_router)
 
 router_protegido = APIRouter()
+router_protegido.include_router(clientes_router)
 
 app.include_router(router_abierto)
 app.include_router(router_protegido)
