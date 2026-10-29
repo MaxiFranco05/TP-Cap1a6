@@ -261,7 +261,7 @@ Paso │ Agente A (Core & Dominio)            │ Agente B (Inventario & Cliente
 ---
 
 ### [C-07] `repuestos-and-inventario`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` completado (archivado `2026-10-29-c-07-repuestos-and-inventario`)
 - **Scope**: Módulo de repuestos, inventario con movimientos atómicos, prohibición de stock en PATCH y trazabilidad histórica de precios
   - Módulo `app/modules/repuestos/schemas.py`:
     - `CrearRepuestoRequest`: codigo, descripcion, precio (`Decimal > 0`), stock_inicial (`int >= 0`) (`extra="forbid"`)

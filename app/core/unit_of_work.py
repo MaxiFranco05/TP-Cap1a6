@@ -5,6 +5,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 if TYPE_CHECKING:
     from app.modules.clientes.repository import ClienteRepository, VehiculoRepository
+    from app.modules.repuestos.repository import (
+        HistorialPrecioRepuestoRepository,
+        MovimientoStockRepository,
+        RepuestoRepository,
+    )
     from app.modules.usuarios.repository import (
         AsignacionRolRepository,
         EventoSeguridadRepository,
@@ -54,12 +59,20 @@ class UnitOfWork(AbstractUnitOfWork):
     asignaciones_rol: "AsignacionRolRepository"
     intentos_acceso: "IntentoAccesoRepository"
     eventos_seguridad: "EventoSeguridadRepository"
+    repuestos: "RepuestoRepository"
+    movimientos_stock: "MovimientoStockRepository"
+    historial_precios: "HistorialPrecioRepuestoRepository"
 
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
     async def __aenter__(self) -> Self:
         from app.modules.clientes.repository import ClienteRepository, VehiculoRepository
+        from app.modules.repuestos.repository import (
+            HistorialPrecioRepuestoRepository,
+            MovimientoStockRepository,
+            RepuestoRepository,
+        )
         from app.modules.usuarios.repository import (
             AsignacionRolRepository,
             EventoSeguridadRepository,
@@ -73,6 +86,9 @@ class UnitOfWork(AbstractUnitOfWork):
         self.asignaciones_rol = AsignacionRolRepository(self.session)
         self.intentos_acceso = IntentoAccesoRepository(self.session)
         self.eventos_seguridad = EventoSeguridadRepository(self.session)
+        self.repuestos = RepuestoRepository(self.session)
+        self.movimientos_stock = MovimientoStockRepository(self.session)
+        self.historial_precios = HistorialPrecioRepuestoRepository(self.session)
         return self
 
     async def commit(self) -> None:
