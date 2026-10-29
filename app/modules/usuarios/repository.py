@@ -6,6 +6,7 @@ from app.modules.usuarios.models import (
     AsignacionRol,
     EventoSeguridad,
     IntentoAcceso,
+    RolEnum,
     Usuario,
 )
 
@@ -44,6 +45,53 @@ class AsignacionRolRepository(BaseRepository[AsignacionRol]):
         )
         result = await self.session.execute(stmt)
         return [str(r) for r in result.scalars().all()]
+
+    async def list_by_usuario_id(self, usuario_id: int) -> list[AsignacionRol]:
+        stmt = (
+            select(AsignacionRol)
+            .where(AsignacionRol.usuario_id == usuario_id)
+            .order_by(AsignacionRol.id.asc())  # type: ignore[union-attr]
+        )
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())
+
+    async def get_open_by_usuario_and_rol(
+        self,
+        usuario_id: int,
+        rol: str,
+    ) -> AsignacionRol | None:
+        stmt = (
+            select(AsignacionRol)
+            .where(AsignacionRol.usuario_id == usuario_id)
+            .where(AsignacionRol.rol == str(rol))
+            .where(AsignacionRol.revocada_en.is_(None))  # type: ignore[union-attr]
+        )
+        result = await self.session.execute(stmt)
+        return result.scalars().first()
+
+    async def count_other_active_admins(
+        self,
+        excluded_usuario_id: int,
+        now: datetime | None = None,
+    ) -> int:
+        now_dt = now or datetime.now(timezone.utc)
+        stmt = (
+            select(func.count(func.distinct(AsignacionRol.usuario_id)))
+            .select_from(AsignacionRol)
+            .join(Usuario, AsignacionRol.usuario_id == Usuario.id)  # type: ignore[arg-type]
+            .where(Usuario.activo.is_(True))  # type: ignore[attr-defined]
+            .where(Usuario.id != excluded_usuario_id)
+            .where(AsignacionRol.rol == str(RolEnum.ADMIN.value))
+            .where(AsignacionRol.revocada_en.is_(None))  # type: ignore[union-attr]
+            .where(
+                or_(
+                    AsignacionRol.vence_en.is_(None),  # type: ignore[union-attr]
+                    AsignacionRol.vence_en > now_dt,  # type: ignore[operator]
+                )
+            )
+        )
+        result = await self.session.execute(stmt)
+        return int(result.scalar_one())
 
 
 class IntentoAccesoRepository(BaseRepository[IntentoAcceso]):
@@ -95,3 +143,13 @@ class IntentoAccesoRepository(BaseRepository[IntentoAcceso]):
 class EventoSeguridadRepository(BaseRepository[EventoSeguridad]):
     def __init__(self, session: AsyncSession) -> None:
         super().__init__(session, EventoSeguridad)
+
+    async def list_paginated(self, offset: int, limit: int) -> list[EventoSeguridad]:
+        stmt = (
+            select(EventoSeguridad)
+            .order_by(EventoSeguridad.id.desc())  # type: ignore[union-attr]
+            .offset(offset)
+            .limit(limit)
+        )
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())

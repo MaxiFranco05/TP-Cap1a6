@@ -202,7 +202,7 @@ Paso │ Agente A (Core & Dominio)            │ Agente B (Inventario & Cliente
 ---
 
 ### [C-05] `rbac-authorization-and-isolation`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` completado (archivado `2026-10-29-c-05-rbac-authorization-and-isolation`)
 - **Scope**: Dependencias de autorización FastAPI con consulta a base de datos en tiempo real, gestión de personal, autoprotección de ADMIN y aislamiento de clientes
   - Dependencias de seguridad en `app/core/dependencies.py`:
     - Inyector `get_current_user`: Lee cookie `access_token` (rechaza `Authorization: Bearer`), decodifica JWT, consulta usuario activo en DB y valida `iat >= user.password_cambiada_en` (401 si expiró o fue invalidado)

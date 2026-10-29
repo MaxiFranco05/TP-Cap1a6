@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import get_settings
 from app.core.database import get_session
 from app.core.unit_of_work import UnitOfWork
+from app.modules.clientes.models import Cliente
 from app.modules.usuarios.models import AsignacionRol, Usuario
 
 
@@ -119,3 +120,16 @@ def requiere_rol(
 
 
 require_roles = requiere_rol
+get_usuario_actual = get_current_user
+
+
+async def get_current_cliente(
+    current_user: Usuario = Depends(get_current_active_user),
+    session: AsyncSession = Depends(get_session),
+) -> Cliente | None:
+    """Resuelve la ficha Cliente asociada al usuario autenticado en sesión (RN-17)."""
+    if current_user.id is None:
+        return None
+    stmt = select(Cliente).where(Cliente.usuario_id == current_user.id)
+    result = await session.execute(stmt)
+    return result.scalars().first()

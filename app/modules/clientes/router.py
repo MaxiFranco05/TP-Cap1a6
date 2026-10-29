@@ -1,6 +1,12 @@
 from fastapi import APIRouter, Depends, Response, status
-from app.core.dependencies import get_current_active_user, get_uow, requiere_rol
+from app.core.dependencies import (
+    get_current_active_user,
+    get_current_cliente,
+    get_uow,
+    requiere_rol,
+)
 from app.core.unit_of_work import UnitOfWork
+from app.modules.clientes.models import Cliente
 from app.modules.clientes.schemas import (
     ClienteResponse,
     CrearClienteRequest,
@@ -79,10 +85,11 @@ async def eliminar_vehiculo(
     status_code=status.HTTP_200_OK,
 )
 async def listar_mis_vehiculos(
-    current_user: Usuario = Depends(get_current_active_user),
+    current_cliente: Cliente | None = Depends(get_current_cliente),
     uow: UnitOfWork = Depends(get_uow),
 ) -> list[VehiculoResponse]:
-    assert current_user.id is not None
+    if current_cliente is None or current_cliente.usuario_id is None:
+        return []
     service = ClientesService(uow)
-    vehiculos = await service.listar_mis_vehiculos(current_user.id)
+    vehiculos = await service.listar_mis_vehiculos(current_cliente.usuario_id)
     return [VehiculoResponse.model_validate(v) for v in vehiculos]

@@ -1,6 +1,6 @@
 import math
 from typing import Generic, TypeVar
-from fastapi import HTTPException, status
+from fastapi import HTTPException, Query, status
 from pydantic import BaseModel, ConfigDict, Field
 
 T = TypeVar("T")
@@ -51,3 +51,14 @@ class ParametrosPaginacion(BaseModel):
 
     page: int = Field(default=1, ge=1, description="Número de página a consultar (>= 1)")
     size: int = Field(default=20, ge=1, le=100, description="Registros por página (1..100, por defecto 20)")
+
+    @property
+    def offset(self) -> int:
+        return (self.page - 1) * self.size
+
+
+def get_parametros_paginacion(
+    page: int = Query(default=1, ge=1, description="Número de página a consultar (>= 1)"),
+    size: int = Query(default=20, ge=1, le=100, description="Registros por página (1..100, por defecto 20)"),
+) -> ParametrosPaginacion:
+    return ParametrosPaginacion(page=page, size=size)

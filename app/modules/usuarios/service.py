@@ -6,6 +6,7 @@ import jwt
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncSession
 from app.core.config import get_settings
 from app.core.database import get_session
+from app.core.paginacion import PaginacionWrapper, ParametrosPaginacion, crear_paginacion
 from app.core.security import (
     ACCESS_TOKEN_COOKIE_NAME,
     clear_auth_cookie,
@@ -27,7 +28,11 @@ from app.modules.usuarios.models import (
 )
 from app.modules.usuarios.repository import IntentoAccesoRepository
 from app.modules.usuarios.schemas import (
+    AsignacionRolResponse,
+    AsignarRolRequest,
     CambiarPasswordRequest,
+    CrearUsuarioRequest,
+    EventoSeguridadResponse,
     LoginRequest,
     LoginResponse,
     RegistroClienteRequest,
@@ -60,7 +65,7 @@ class UsuariosService:
         bind = self.uow.session.bind
         if isinstance(bind, AsyncConnection):
             async with AsyncSession(
-                bind=bind,
+                bind=conn if (conn := bind) else bind,
                 expire_on_commit=False,
                 join_transaction_mode="create_savepoint",
             ) as indep_session:
@@ -342,7 +347,7 @@ class UsuariosService:
                 )
             )
             roles_vigentes = await self.uow.asignaciones_rol.get_active_roles_by_usuario_id(
-                 current_user.id,
+                current_user.id,
                 now=cambio_dt,
             )
 
@@ -360,3 +365,189 @@ class UsuariosService:
             debe_cambiar_password=False,
             expira_en_segundos=settings.JWT_EXPIRATION_SECONDS,
         )
+
+    async def crear_usuario(
+        self,
+        admin_user: Usuario,
+        data: CrearUsuarioRequest,
+    ) -> UsuarioResponse:
+        # Regla Dura #6: hashear la contraseña provisoria fuera de la transacción de base de datos
+        password_hash = await hash_password(data.password)
+
+        async with self.uow:
+            existente = await self.uow.usuarios.get_by_email(data.email)
+            if existente is not None:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="El email ya está registrado.",
+                )
+
+            usuario = Usuario(
+                email=data.email,
+                nombre=data.nombre,
+                password_hash=password_hash,
+                activo=True,
+                debe_cambiar_password=True,
+                password_cambiada_en=None,
+            )
+            await self.uow.usuarios.add(usuario)
+            assert usuario.id is not None
+
+            await self.uow.eventos_seguridad.add(
+                EventoSeguridad(
+                    actor=admin_user.email,
+                    accion=f"Alta de usuario {usuario.email}",
+                )
+            )
+
+            return UsuarioResponse(
+                id=usuario.id,
+                email=usuario.email,
+                nombre=usuario.nombre,
+                activo=usuario.activo,
+                debe_cambiar_password=usuario.debe_cambiar_password,
+                roles=[],
+                roles_token=[],
+            )
+
+    async def listar_roles_usuario(
+        self,
+        usuario_id: int,
+    ) -> list[AsignacionRolResponse]:
+        async with self.uow:
+            usuario = await self.uow.usuarios.get_by_id(usuario_id)
+            if usuario is None:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Usuario no encontrado.",
+                )
+
+            asignaciones = await self.uow.asignaciones_rol.list_by_usuario_id(usuario_id)
+            return [AsignacionRolResponse.model_validate(a) for a in asignaciones]
+
+    async def asignar_rol(
+        self,
+        admin_user: Usuario,
+        usuario_id: int,
+        data: AsignarRolRequest,
+    ) -> AsignacionRolResponse:
+        async with self.uow:
+            target_user = await self.uow.usuarios.get_by_id(usuario_id)
+            if target_user is None:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Usuario no encontrado.",
+                )
+
+            now = datetime.now(timezone.utc)
+            rol_str = str(data.rol.value)
+            existente = await self.uow.asignaciones_rol.get_open_by_usuario_and_rol(
+                usuario_id,
+                rol_str,
+            )
+            if existente is not None:
+                if existente.vence_en is None or existente.vence_en > now:
+                    raise HTTPException(
+                        status_code=status.HTTP_409_CONFLICT,
+                        detail="El usuario ya posee una asignación vigente para ese rol.",
+                    )
+                existente.revocada_en = now
+                await self.uow.asignaciones_rol.update(existente)
+
+            nueva = AsignacionRol(
+                usuario_id=usuario_id,
+                rol=RolEnum(rol_str),
+                desde=now,
+                vence_en=data.vence_en,
+                revocada_en=None,
+                otorgada_por=admin_user.id,
+            )
+            await self.uow.asignaciones_rol.add(nueva)
+
+            await self.uow.eventos_seguridad.add(
+                EventoSeguridad(
+                    actor=admin_user.email,
+                    accion=f"Asignación de rol {rol_str} a {target_user.email}",
+                    cuando=now,
+                )
+            )
+
+            return AsignacionRolResponse.model_validate(nueva)
+
+    async def revocar_rol(
+        self,
+        admin_user: Usuario,
+        usuario_id: int,
+        rol: RolEnum,
+    ) -> AsignacionRolResponse:
+        async with self.uow:
+            target_user = await self.uow.usuarios.get_by_id(usuario_id)
+            if target_user is None:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Usuario no encontrado.",
+                )
+
+            now = datetime.now(timezone.utc)
+            rol_str = str(rol.value)
+
+            # RN-05 #1: ningún administrador puede revocarse su propio rol ADMIN
+            if rol == RolEnum.ADMIN and usuario_id == admin_user.id:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="Un administrador no puede revocarse su propio rol ADMIN.",
+                )
+
+            asignacion = await self.uow.asignaciones_rol.get_open_by_usuario_and_rol(
+                usuario_id,
+                rol_str,
+            )
+            if asignacion is None:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="El usuario no posee una asignación activa para ese rol.",
+                )
+
+            # RN-05 #2: el sistema no puede quedar sin administradores activos vigentes
+            if rol == RolEnum.ADMIN:
+                otros_admins = await self.uow.asignaciones_rol.count_other_active_admins(
+                    excluded_usuario_id=usuario_id,
+                    now=now,
+                )
+                if otros_admins == 0:
+                    raise HTTPException(
+                        status_code=status.HTTP_409_CONFLICT,
+                        detail="El sistema no puede quedar sin administradores activos vigentes.",
+                    )
+
+            asignacion.revocada_en = now
+            await self.uow.asignaciones_rol.update(asignacion)
+
+            await self.uow.eventos_seguridad.add(
+                EventoSeguridad(
+                    actor=admin_user.email,
+                    accion=f"Revocación de rol {rol_str} a {target_user.email}",
+                    cuando=now,
+                )
+            )
+
+            return AsignacionRolResponse.model_validate(asignacion)
+
+    async def listar_eventos_seguridad(
+        self,
+        params: ParametrosPaginacion,
+    ) -> PaginacionWrapper[EventoSeguridadResponse]:
+        async with self.uow:
+            total = await self.uow.eventos_seguridad.count()
+            items = await self.uow.eventos_seguridad.list_paginated(
+                offset=params.offset,
+                limit=params.size,
+            )
+            return crear_paginacion(
+                items=[EventoSeguridadResponse.model_validate(e) for e in items],
+                total=total,
+                page=params.page,
+                size=params.size,
+            )
+
+
