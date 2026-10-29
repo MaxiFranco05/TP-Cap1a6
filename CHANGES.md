@@ -117,7 +117,7 @@ Paso │ Agente A (Core & Dominio)            │ Agente B (Inventario & Cliente
 ## FASE 1 — Persistencia, Modelos Relacionales y Triggers
 
 ### [C-02] `core-models-and-migrations`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` completado (archivado `2026-10-27-c-02-core-models-and-migrations`)
 - **Scope**: Definición de los 13 modelos relacionales SQLModel, restricciones CHECK, relaciones, índices parciales y dos migraciones Alembic
   - Modelos relacionales SQLModel con restricciones de integridad y tipos obligatorios:
     - `app/modules/usuarios/models.py`: Tablas `usuario` (`email` único, `password_hash`, `activo`, `debe_cambiar_password`, `password_cambiada_en`), `asignacion_rol` (`rol` CHECK con `ADMIN`, `RECEPCION`, `MECANICO`, `CLIENTE`, `desde`, `vence_en`, `revocada_en`, índice único parcial `(usuario_id, rol) WHERE revocada_en IS NULL`), `intento_acceso` (índice en `email, ip, cuando`), `evento_seguridad`
@@ -141,7 +141,7 @@ Paso │ Agente A (Core & Dominio)            │ Agente B (Inventario & Cliente
 ## FASE 2 — Abstracción Transaccional y Repositorios
 
 ### [C-03] `base-repositories-and-uow`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` completado (archivado `2026-10-27-c-03-base-repositories-and-uow`)
 - **Scope**: Repositorios genéricos reutilizables y patrón Unit of Work asincrónico base
   - Módulo `app/core/repository.py`:
     - Clase genérica `BaseRepository[T]`: Métodos asincrónicos `get(id)`, `list(skip, limit)`, `add(instance)`, `update(instance)`, `delete(instance)`. Regla arquitectónica estricta: ejecuta exclusivamente `await session.flush()`, **nunca** `commit()`
@@ -168,7 +168,7 @@ Paso │ Agente A (Core & Dominio)            │ Agente B (Inventario & Cliente
 ## FASE 3 — Seguridad, Autenticación y Autorización Dinámica
 
 ### [C-04] `auth-and-passwords`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` completado (archivado `2026-10-29-c-04-auth-and-passwords`)
 - **Scope**: Autenticación segura, contraseñas con bcrypt en hilo separado, mitigación de timing attacks, rate limiting y cookies HttpOnly
   - Módulo `app/core/security.py`:
     - Hashing y verificación con `bcrypt` desacoplados del bucle de eventos mediante `asyncio.to_thread`
@@ -231,7 +231,7 @@ Paso │ Agente A (Core & Dominio)            │ Agente B (Inventario & Cliente
 > Los changes C-06 y C-07 pueden implementarse en paralelo una vez archivado C-05. Ambos deben estar completos antes de iniciar C-08.
 
 ### [C-06] `clientes-and-vehiculos`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` completado (archivado `2026-10-27-c-06-clientes-and-vehiculos`)
 - **Scope**: Módulo de clientes y vehículos con soft delete, reasignación por venta y validación de órdenes abiertas
   - Módulo `app/modules/clientes/schemas.py`:
     - `CrearClienteRequest`: nombre, documento, teléfono (`extra="forbid"`)

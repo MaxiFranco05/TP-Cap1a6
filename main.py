@@ -13,6 +13,7 @@ from app.modules.health.router import router as health_router
 import app.modules.ordenes.models  # noqa: F401
 import app.modules.repuestos.models  # noqa: F401
 import app.modules.usuarios.models  # noqa: F401
+from app.modules.usuarios.router import auth_router
 
 
 @asynccontextmanager
@@ -76,6 +77,7 @@ async def data_error_handler(_request: Request, _exc: DataError) -> JSONResponse
 # Dos grupos canónicos de rutas
 router_abierto = APIRouter()
 router_abierto.include_router(health_router)
+router_abierto.include_router(auth_router)
 
 router_protegido = APIRouter()
 router_protegido.include_router(clientes_router)

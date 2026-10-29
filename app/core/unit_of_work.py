@@ -5,6 +5,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 if TYPE_CHECKING:
     from app.modules.clientes.repository import ClienteRepository, VehiculoRepository
+    from app.modules.usuarios.repository import (
+        AsignacionRolRepository,
+        EventoSeguridadRepository,
+        IntentoAccesoRepository,
+        UsuarioRepository,
+    )
 
 
 class AbstractUnitOfWork(ABC):
@@ -44,15 +50,29 @@ class UnitOfWork(AbstractUnitOfWork):
 
     clientes: "ClienteRepository"
     vehiculos: "VehiculoRepository"
+    usuarios: "UsuarioRepository"
+    asignaciones_rol: "AsignacionRolRepository"
+    intentos_acceso: "IntentoAccesoRepository"
+    eventos_seguridad: "EventoSeguridadRepository"
 
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
     async def __aenter__(self) -> Self:
         from app.modules.clientes.repository import ClienteRepository, VehiculoRepository
+        from app.modules.usuarios.repository import (
+            AsignacionRolRepository,
+            EventoSeguridadRepository,
+            IntentoAccesoRepository,
+            UsuarioRepository,
+        )
 
         self.clientes = ClienteRepository(self.session)
         self.vehiculos = VehiculoRepository(self.session)
+        self.usuarios = UsuarioRepository(self.session)
+        self.asignaciones_rol = AsignacionRolRepository(self.session)
+        self.intentos_acceso = IntentoAccesoRepository(self.session)
+        self.eventos_seguridad = EventoSeguridadRepository(self.session)
         return self
 
     async def commit(self) -> None:
