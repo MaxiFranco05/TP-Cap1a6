@@ -12,6 +12,7 @@ import app.modules.clientes.models  # noqa: F401
 from app.modules.clientes.router import router as clientes_router
 from app.modules.health.router import router as health_router
 import app.modules.ordenes.models  # noqa: F401
+from app.modules.ordenes.router import router as ordenes_router
 import app.modules.repuestos.models  # noqa: F401
 from app.modules.repuestos.router import router as repuestos_router
 import app.modules.usuarios.models  # noqa: F401
@@ -86,6 +87,7 @@ router_protegido.include_router(usuarios_router)
 router_protegido.include_router(eventos_router)
 router_protegido.include_router(clientes_router)
 router_protegido.include_router(repuestos_router)
+router_protegido.include_router(ordenes_router)
 
 app.include_router(router_abierto)
 app.include_router(router_protegido)

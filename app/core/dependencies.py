@@ -133,3 +133,26 @@ async def get_current_cliente(
     stmt = select(Cliente).where(Cliente.usuario_id == current_user.id)
     result = await session.execute(stmt)
     return result.scalars().first()
+
+
+async def get_current_user_roles(
+    current_user: Usuario = Depends(get_current_active_user),
+    session: AsyncSession = Depends(get_session),
+) -> list[str]:
+    """Retorna los roles vigentes del usuario autenticado."""
+    if current_user.id is None:
+        return []
+    now = datetime.now(timezone.utc)
+    stmt = (
+        select(AsignacionRol.rol)
+        .where(AsignacionRol.usuario_id == current_user.id)
+        .where(AsignacionRol.revocada_en.is_(None))  # type: ignore[union-attr]
+        .where(
+            or_(
+                AsignacionRol.vence_en.is_(None),  # type: ignore[union-attr]
+                AsignacionRol.vence_en > now,  # type: ignore[operator]
+            )
+        )
+    )
+    result = await session.execute(stmt)
+    return [str(r) for r in result.scalars().all()]
