@@ -1,0 +1,181 @@
+### ==============================================================================
+### 06_ordenes.http — Casos Oficiales C-17 a C-19
+### Ciclo de Vida de Órdenes, Máquina de Estados, Consumo Atómico y Cancelación
+### ==============================================================================
+
+@baseUrl = http://localhost:8000
+
+### ------------------------------------------------------------------------------
+### Paso previo 1: Login como RECEPCION
+### ------------------------------------------------------------------------------
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+Accept: application/json
+
+{
+  "email": "recepcion@example.com",
+  "password": "Password123!"
+}
+
+### ------------------------------------------------------------------------------
+### Catálogo inmutable de estados de orden (RN-19)
+### ------------------------------------------------------------------------------
+GET {{baseUrl}}/estados-orden
+Accept: application/json
+
+# Respuesta esperada:
+# HTTP/1.1 200 OK
+# [
+#   { "codigo": "PENDIENTE", "posicion": 1, "es_final": false },
+#   { "codigo": "EN_REPARACION", "posicion": 2, "es_final": false },
+#   { "codigo": "TERMINADA", "posicion": 3, "es_final": true },
+#   { "codigo": "CANCELADA", "posicion": 4, "es_final": true }
+# ]
+
+### ------------------------------------------------------------------------------
+### Caso C-17a: Rechazo de campos prohibidos de precio o total en creación (RN-10)
+### ------------------------------------------------------------------------------
+POST {{baseUrl}}/ordenes
+Content-Type: application/json
+Accept: application/json
+
+{
+  "vehiculo_id": 1,
+  "falla": "Cambio de aceite y filtro",
+  "items": [
+    { "repuesto_id": 1, "cantidad": 1, "precio": "100.00" }
+  ],
+  "total": "100.00"
+}
+
+# Respuesta esperada:
+# HTTP/1.1 422 Unprocessable Entity
+
+### ------------------------------------------------------------------------------
+### Caso C-17b: Creación exitosa de orden — Total calculado en servidor (RN-10)
+### Filtro (8500) + 4 litros de aceite (4 * 12000 = 48000) = Total 56500.00
+### ------------------------------------------------------------------------------
+POST {{baseUrl}}/ordenes
+Content-Type: application/json
+Accept: application/json
+
+{
+  "vehiculo_id": 1,
+  "falla": "Service de 30.000 km",
+  "items": [
+    { "repuesto_id": 1, "cantidad": 1 },
+    { "repuesto_id": 4, "cantidad": 4 }
+  ]
+}
+
+# Respuesta esperada:
+# HTTP/1.1 201 Created
+# {
+#   "id": 3,
+#   "vehiculo_id": 1,
+#   "estado": "PENDIENTE",
+#   "total": "56500.00",
+#   "items": [ ... ],
+#   "historial": [ { "desde_estado": null, "hasta_estado": "PENDIENTE" } ]
+# }
+
+### ------------------------------------------------------------------------------
+### Paso previo 2: Login como MECANICO titular
+### ------------------------------------------------------------------------------
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+Accept: application/json
+
+{
+  "email": "mecanico@example.com",
+  "password": "Password123!"
+}
+
+### ------------------------------------------------------------------------------
+### Caso C-18a: Inicio de reparación por mecánico (RN-11)
+### Transiciona a EN_REPARACION y asigna mecanico_id al usuario en sesión
+### ------------------------------------------------------------------------------
+POST {{baseUrl}}/ordenes/3/iniciar
+Accept: application/json
+
+# Respuesta esperada:
+# HTTP/1.1 200 OK
+# {
+#   "id": 3,
+#   "estado": "EN_REPARACION",
+#   "mecanico_id": 4,
+#   "historial": [ ... ]
+# }
+
+### ------------------------------------------------------------------------------
+### Caso C-18b: Terminación con consumo atómico de stock y BackgroundTasks (RN-13)
+### ------------------------------------------------------------------------------
+POST {{baseUrl}}/ordenes/3/terminar
+Accept: application/json
+
+# Respuesta esperada:
+# HTTP/1.1 200 OK
+# Descuenta 1 filtro y 4 litros de aceite, asienta movimientos y encola aviso al cliente.
+# {
+#   "id": 3,
+#   "estado": "TERMINADA",
+#   "historial": [ ... ]
+# }
+
+### ------------------------------------------------------------------------------
+### Caso C-18c: Rollback total por stock insuficiente (RN-13)
+### La Orden #2 canónica pide 4 bujías, pero en stock solo hay 2 -> 409 Conflict
+### ------------------------------------------------------------------------------
+POST {{baseUrl}}/ordenes/2/terminar
+Accept: application/json
+
+# Respuesta esperada:
+# HTTP/1.1 409 Conflict
+# {
+#   "detail": "Stock insuficiente para el repuesto BUJ-003: disponible 2, requerido 4"
+# }
+
+### ------------------------------------------------------------------------------
+### Caso C-19a: Precedencia de validación en cancelación (403 antes de 409) (RN-12)
+### Un cliente ajeno intenta cancelar la Orden #2 (pertenece a Jorge y está EN_REPARACION)
+### ------------------------------------------------------------------------------
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+Accept: application/json
+
+{
+  "email": "cliente@example.com",
+  "password": "Password123!"
+}
+
+### El cliente Laura intenta cancelar la orden de Jorge -> 403 Forbidden antes que 409
+POST {{baseUrl}}/ordenes/2/cancelar
+Accept: application/json
+
+# Respuesta esperada:
+# HTTP/1.1 403 Forbidden
+# {"detail": "No tiene permiso para cancelar esta orden"}
+
+### ------------------------------------------------------------------------------
+### Caso C-19b: Cancelación exitosa de orden PENDIENTE por dueña (RN-12)
+### Laura cancela su Orden #1 que está en estado PENDIENTE -> 200 OK
+### ------------------------------------------------------------------------------
+POST {{baseUrl}}/ordenes/1/cancelar
+Accept: application/json
+
+# Respuesta esperada:
+# HTTP/1.1 200 OK
+# { "id": 1, "estado": "CANCELADA", ... }
+
+### ------------------------------------------------------------------------------
+### Autoservicio: Consulta de órdenes del propio cliente (RN-17)
+### ------------------------------------------------------------------------------
+GET {{baseUrl}}/mis-ordenes
+Accept: application/json
+
+# Respuesta esperada:
+# HTTP/1.1 200 OK
+# {
+#   "items": [ { "id": 1, "estado": "CANCELADA", ... }, { "id": 3, "estado": "TERMINADA", ... } ],
+#   "total": 2, ...
+# }

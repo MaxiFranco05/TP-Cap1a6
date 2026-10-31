@@ -1,0 +1,111 @@
+### ==============================================================================
+### 03_roles.http — Casos Oficiales C-09 y C-10
+### Roles Dinámicos en BD, Asignación con Vigencia, Autoprotección y Auditoría
+### ==============================================================================
+
+@baseUrl = http://localhost:8000
+
+### ------------------------------------------------------------------------------
+### Paso previo: Iniciar sesión como ADMIN principal
+### ------------------------------------------------------------------------------
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+Accept: application/json
+
+{
+  "email": "admin@example.com",
+  "password": "Password123!"
+}
+
+### ------------------------------------------------------------------------------
+### Caso C-09a: Listar usuarios del personal (requiere ADMIN)
+### ------------------------------------------------------------------------------
+GET {{baseUrl}}/usuarios
+Accept: application/json
+
+# Respuesta esperada:
+# HTTP/1.1 200 OK
+# [ { "id": 1, "email": "admin@example.com", ... }, ... ]
+
+### ------------------------------------------------------------------------------
+### Caso C-09b: Alta de nuevo empleado por un Administrador
+### ------------------------------------------------------------------------------
+POST {{baseUrl}}/usuarios
+Content-Type: application/json
+Accept: application/json
+
+{
+  "email": "aprendiz@example.com",
+  "nombre": "Aprendiz Mecánico",
+  "password": "Password123!",
+  "rol_inicial": "MECANICO"
+}
+
+# Respuesta esperada:
+# HTTP/1.1 201 Created
+
+### ------------------------------------------------------------------------------
+### Caso C-09c: Consultar roles vigentes de un usuario
+### ------------------------------------------------------------------------------
+GET {{baseUrl}}/usuarios/3/roles
+Accept: application/json
+
+# Respuesta esperada:
+# HTTP/1.1 200 OK
+# [ { "rol": "RECEPCION", "desde": "...", "vence_en": null } ]
+
+### ------------------------------------------------------------------------------
+### Caso C-09d: Asignar nuevo rol con fecha de vencimiento
+### ------------------------------------------------------------------------------
+POST {{baseUrl}}/usuarios/3/roles
+Content-Type: application/json
+Accept: application/json
+
+{
+  "rol": "ADMIN",
+  "vence_en": "2030-12-31T23:59:59Z"
+}
+
+# Respuesta esperada:
+# HTTP/1.1 201 Created
+
+### ------------------------------------------------------------------------------
+### Caso C-10a: Autoprotección de ADMIN — Intento de auto-revocación (409 Conflict)
+### ------------------------------------------------------------------------------
+DELETE {{baseUrl}}/usuarios/1/roles/ADMIN
+Accept: application/json
+
+# Respuesta esperada:
+# HTTP/1.1 409 Conflict
+# {"detail": "Un administrador no puede revocar su propio rol de ADMIN."}
+
+### ------------------------------------------------------------------------------
+### Caso C-10b: Autoprotección de ADMIN — Revocación permitida sobre otro admin
+### ------------------------------------------------------------------------------
+DELETE {{baseUrl}}/usuarios/2/roles/ADMIN
+Accept: application/json
+
+# Respuesta esperada:
+# HTTP/1.1 200 OK
+# {"mensaje": "Rol ADMIN revocado exitosamente."}
+
+### ------------------------------------------------------------------------------
+### Caso C-10c: Autoprotección — Intento de revocar el último ADMIN activo (409)
+### ------------------------------------------------------------------------------
+# (Si usuario 1 fuera el único admin restante, intentar revocarlo da 409)
+
+### ------------------------------------------------------------------------------
+### Auditoría: Consultar eventos de seguridad registrados
+### ------------------------------------------------------------------------------
+GET {{baseUrl}}/eventos?page=1&size=10
+Accept: application/json
+
+# Respuesta esperada:
+# HTTP/1.1 200 OK
+# {
+#   "items": [ ... ],
+#   "total": 1,
+#   "page": 1,
+#   "size": 10,
+#   "pages": 1
+# }

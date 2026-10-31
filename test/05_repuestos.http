@@ -1,0 +1,120 @@
+### ==============================================================================
+### 05_repuestos.http — Casos Oficiales C-15 y C-16
+### Catálogo de Repuestos, Mutación por Movimientos y Trazabilidad de Precios
+### ==============================================================================
+
+@baseUrl = http://localhost:8000
+
+### ------------------------------------------------------------------------------
+### Paso previo: Iniciar sesión como ADMIN
+### ------------------------------------------------------------------------------
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+Accept: application/json
+
+{
+  "email": "admin@example.com",
+  "password": "Password123!"
+}
+
+### ------------------------------------------------------------------------------
+### Caso C-15a: Consulta paginada y búsqueda de repuestos
+### ------------------------------------------------------------------------------
+GET {{baseUrl}}/repuestos?q=aceite&page=1&size=10
+Accept: application/json
+
+# Respuesta esperada:
+# HTTP/1.1 200 OK
+# {
+#   "items": [ ... ],
+#   "total": 2,
+#   "page": 1,
+#   "size": 10,
+#   "pages": 1
+# }
+
+### ------------------------------------------------------------------------------
+### Caso C-15b: Alta de nuevo repuesto con stock inicial (RN-14)
+### Crea el repuesto y registra atómicamente el movimiento "Stock inicial"
+### ------------------------------------------------------------------------------
+POST {{baseUrl}}/repuestos
+Content-Type: application/json
+Accept: application/json
+
+{
+  "codigo": "AMOR-005",
+  "descripcion": "Amortiguador Delantero",
+  "precio": "45000.00",
+  "stock_inicial": 6
+}
+
+# Respuesta esperada:
+# HTTP/1.1 201 Created
+# { "id": 5, "codigo": "AMOR-005", "stock": 6, ... }
+
+### ------------------------------------------------------------------------------
+### Caso C-15c: Rechazo de alteración directa de stock en PATCH (RN-14 / Regla Dura #1)
+### El stock no puede modificarse directamente por PATCH -> 422
+### ------------------------------------------------------------------------------
+PATCH {{baseUrl}}/repuestos/5
+Content-Type: application/json
+Accept: application/json
+
+{
+  "stock": 20
+}
+
+# Respuesta esperada:
+# HTTP/1.1 422 Unprocessable Entity
+
+### ------------------------------------------------------------------------------
+### Caso C-15d: Reposición manual de existencias (RN-14)
+### Incrementa el stock y asienta fila en movimiento_stock
+### ------------------------------------------------------------------------------
+POST {{baseUrl}}/repuestos/5/reponer
+Content-Type: application/json
+Accept: application/json
+
+{
+  "cantidad": 4,
+  "motivo": "Compra a distribuidora oficial"
+}
+
+# Respuesta esperada:
+# HTTP/1.1 200 OK
+# { "id": 5, "stock": 10, ... }
+
+### ------------------------------------------------------------------------------
+### Caso C-16: Modificación de precio con trazabilidad obligatoria (RN-20)
+### Modifica el precio e inserta fila en historial_precio_repuesto
+### ------------------------------------------------------------------------------
+PATCH {{baseUrl}}/repuestos/5
+Content-Type: application/json
+Accept: application/json
+
+{
+  "precio": "48500.00"
+}
+
+# Respuesta esperada:
+# HTTP/1.1 200 OK
+# { "id": 5, "precio": "48500.00", ... }
+
+### Auditoría histórica de precios del repuesto
+GET {{baseUrl}}/repuestos/5/precios
+Accept: application/json
+
+# Respuesta esperada:
+# HTTP/1.1 200 OK
+# [ { "precio_anterior": "45000.00", "precio_nuevo": "48500.00", ... } ]
+
+### Auditoría de movimientos de inventario del repuesto
+GET {{baseUrl}}/repuestos/5/movimientos
+Accept: application/json
+
+# Respuesta esperada:
+# HTTP/1.1 200 OK
+# [
+#   { "cantidad": 6, "motivo": "Stock inicial", ... },
+#   { "cantidad": 4, "motivo": "Compra a distribuidora oficial", ... }
+# ]

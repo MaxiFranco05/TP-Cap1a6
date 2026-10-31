@@ -1,0 +1,132 @@
+### ==============================================================================
+### 04_clientes_vehiculos.http — Casos Oficiales C-11 a C-13
+### Gestión de Clientes, Flota de Vehículos, Aislamiento y Borrado Lógico
+### ==============================================================================
+
+@baseUrl = http://localhost:8000
+
+### ------------------------------------------------------------------------------
+### Paso previo 1: Login como CLIENTE (Laura)
+### ------------------------------------------------------------------------------
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+Accept: application/json
+
+{
+  "email": "cliente@example.com",
+  "password": "Password123!"
+}
+
+### ------------------------------------------------------------------------------
+### Caso C-11: Aislamiento estricto de datos propios (RN-17)
+### Laura solo visualiza los 2 vehículos de su propiedad
+### ------------------------------------------------------------------------------
+GET {{baseUrl}}/mis-vehiculos
+Accept: application/json
+
+# Respuesta esperada:
+# HTTP/1.1 200 OK
+# [
+#   { "id": 1, "patente": "AC456EF", "marca": "Toyota", "modelo": "Corolla", "anio": 2020 },
+#   { "id": 2, "patente": "AD789GH", "marca": "Ford", "modelo": "Fiesta", "anio": 2018 }
+# ]
+
+### ------------------------------------------------------------------------------
+### Paso previo 2: Login como personal de RECEPCION
+### ------------------------------------------------------------------------------
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+Accept: application/json
+
+{
+  "email": "recepcion@example.com",
+  "password": "Password123!"
+}
+
+### ------------------------------------------------------------------------------
+### Caso C-12a: Registro de nuevo cliente por recepción
+### ------------------------------------------------------------------------------
+POST {{baseUrl}}/clientes
+Content-Type: application/json
+Accept: application/json
+
+{
+  "nombre": "Martín Palermo",
+  "documento": "23456789",
+  "telefono": "1199887766"
+}
+
+# Respuesta esperada:
+# HTTP/1.1 201 Created
+# { "id": 3, "nombre": "Martín Palermo", "documento": "23456789", ... }
+
+### ------------------------------------------------------------------------------
+### Caso C-12b: Registro de vehículo con validación estricta de año (1950..2100)
+### ------------------------------------------------------------------------------
+# Intento con año inválido (1890) -> 422 Unprocessable Entity
+POST {{baseUrl}}/clientes/3/vehiculos
+Content-Type: application/json
+Accept: application/json
+
+{
+  "patente": "AF111AA",
+  "marca": "Renault",
+  "modelo": "Clio",
+  "anio": 1890
+}
+
+# Respuesta esperada:
+# HTTP/1.1 422 Unprocessable Entity
+
+### Registro válido de vehículo
+POST {{baseUrl}}/clientes/3/vehiculos
+Content-Type: application/json
+Accept: application/json
+
+{
+  "patente": "AF111AA",
+  "marca": "Renault",
+  "modelo": "Clio",
+  "anio": 2019
+}
+
+# Respuesta esperada:
+# HTTP/1.1 201 Created
+
+### ------------------------------------------------------------------------------
+### Caso C-13: Bloqueo de borrado de vehículo con órdenes abiertas (RN-02)
+### Vehículo #1 de Laura tiene la Orden #1 en estado PENDIENTE -> 409 Conflict
+### ------------------------------------------------------------------------------
+DELETE {{baseUrl}}/vehiculos/1
+Accept: application/json
+
+# Respuesta esperada:
+# HTTP/1.1 409 Conflict
+# {"detail": "No se puede eliminar el vehículo porque tiene órdenes de trabajo abiertas."}
+
+### ------------------------------------------------------------------------------
+### Caso C-12c: Borrado lógico exitoso de vehículo sin órdenes abiertas
+### ------------------------------------------------------------------------------
+DELETE {{baseUrl}}/vehiculos/2
+Accept: application/json
+
+# Respuesta esperada:
+# HTTP/1.1 204 No Content
+
+### ------------------------------------------------------------------------------
+### Caso C-12d: Re-alta de patente vendida (RN-01)
+### Reutilización de la patente "AD789GH" dada de baja para otro cliente
+### ------------------------------------------------------------------------------
+POST {{baseUrl}}/clientes/3/vehiculos
+Content-Type: application/json
+Accept: application/json
+
+{
+  "patente": "AD789GH",
+  "marca": "Ford",
+  "modelo": "Fiesta",
+  "anio": 2018
+}
+
+# Respuesta esperada:
+# HTTP/1.1 201 Created

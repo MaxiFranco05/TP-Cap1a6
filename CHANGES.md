@@ -296,7 +296,7 @@ Paso │ Agente A (Core & Dominio)            │ Agente B (Inventario & Cliente
 ## FASE 5 — Dominio de Órdenes de Trabajo y Notificaciones
 
 ### [C-08] `ordenes-and-background-tasks`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` completado (archivado `2026-10-31-c-08-ordenes-and-background-tasks`)
 - **Scope**: Módulo de órdenes de trabajo, catálogo de estados inmutable, composición atómica, transiciones de estado, descuento de inventario en UoW y BackgroundTasks
   - Módulo `app/modules/ordenes/schemas.py`:
     - `ItemOrdenInput`: repuesto_id, cantidad (`int > 0`) (`extra="forbid"`, sin precios)
@@ -332,7 +332,7 @@ Paso │ Agente A (Core & Dominio)            │ Agente B (Inventario & Cliente
 ## FASE 6 — Poblado Canónico y Verificación E2E
 
 ### [C-09] `seed-and-test-suite`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` completado (archivado `2026-10-31-c-09-seed-and-test-suite`)
 - **Scope**: Script canónico `seed.py`, suite de pruebas `.http` interactivas en `test/`, script SQL de triggers y validación integral de casos C-01 a C-19
   - Script canónico de datos `seed.py`:
     - Script independiente ejecutable (`python seed.py`) que limpia tablas y puebla de forma reproducible la base de datos para los casos de prueba oficiales

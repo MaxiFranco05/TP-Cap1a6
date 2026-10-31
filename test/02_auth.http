@@ -1,0 +1,157 @@
+### ==============================================================================
+### 02_auth.http — Casos Oficiales C-03 a C-08
+### Autenticación Segura, Cookies HttpOnly, Timing Attacks y Control de Sesión
+### ==============================================================================
+
+@baseUrl = http://localhost:8000
+
+### ------------------------------------------------------------------------------
+### Caso C-03a: Auto-registro exitoso de un nuevo cliente
+### ------------------------------------------------------------------------------
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+Accept: application/json
+
+{
+  "email": "carlos_nuevo@example.com",
+  "password": "Password123!",
+  "nombre": "Carlos Gómez",
+  "documento": "33999888",
+  "telefono": "1144332211"
+}
+
+# Respuesta esperada:
+# HTTP/1.1 201 Created
+# Set-Cookie: access_token=eyJ...; HttpOnly; Path=/; SameSite=lax
+#
+# {
+#   "id": 8,
+#   "email": "carlos_nuevo@example.com",
+#   "nombre": "Carlos Gómez",
+#   "activo": true,
+#   "debe_cambiar_password": false
+# }
+
+### ------------------------------------------------------------------------------
+### Caso C-03b: Rechazo de auto-registro por email ya existente (409 Conflict)
+### ------------------------------------------------------------------------------
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+Accept: application/json
+
+{
+  "email": "admin@example.com",
+  "password": "Password123!",
+  "nombre": "Duplicado",
+  "documento": "99888777",
+  "telefono": "11111111"
+}
+
+# Respuesta esperada:
+# HTTP/1.1 409 Conflict
+
+### ------------------------------------------------------------------------------
+### Caso C-04: Login exitoso con credenciales válidas (Cookie HttpOnly)
+### ------------------------------------------------------------------------------
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+Accept: application/json
+
+{
+  "email": "admin@example.com",
+  "password": "Password123!"
+}
+
+# Respuesta esperada:
+# HTTP/1.1 200 OK
+# Set-Cookie: access_token=eyJ...; HttpOnly; Path=/; SameSite=lax
+#
+# {
+#   "id": 1,
+#   "email": "admin@example.com",
+#   "nombre": "Administrador Principal",
+#   "activo": true,
+#   "debe_cambiar_password": false
+# }
+
+### ------------------------------------------------------------------------------
+### Caso C-05: Mitigación de timing attack (Email no existente vs contraseña errónea)
+### Mismo mensaje genérico y tiempo nivelado mediante dummy hash
+### ------------------------------------------------------------------------------
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+Accept: application/json
+
+{
+  "email": "inexistente_total@example.com",
+  "password": "Password123!"
+}
+
+# Respuesta esperada:
+# HTTP/1.1 401 Unauthorized
+# {"detail": "Credenciales inválidas."}
+
+### ------------------------------------------------------------------------------
+### Caso C-06: Bloqueo por intentos fallidos reiterados (Rate Limiting 429)
+### ------------------------------------------------------------------------------
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+Accept: application/json
+
+{
+  "email": "admin@example.com",
+  "password": "clave_incorrecta"
+}
+
+# Tras 5 intentos fallidos en menos de 15 minutos:
+# HTTP/1.1 429 Too Many Requests
+# Retry-After: 900
+# {"detail": "Demasiados intentos fallidos. Intente nuevamente en 15 minutos."}
+
+### ------------------------------------------------------------------------------
+### Caso C-07: Login con usuario que debe cambiar contraseña obligatoriamente
+### ------------------------------------------------------------------------------
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+Accept: application/json
+
+{
+  "email": "nuevo@example.com",
+  "password": "Password123!"
+}
+
+# Respuesta esperada:
+# HTTP/1.1 200 OK
+# Set-Cookie: access_token=eyJ...; HttpOnly; Path=/; SameSite=lax
+
+### Intentar acceder a un recurso protegido con debe_cambiar_password=True -> 403
+GET {{baseUrl}}/usuarios
+Accept: application/json
+
+# Respuesta esperada:
+# HTTP/1.1 403 Forbidden
+# {"detail": "Debe cambiar su contraseña antes de acceder a este recurso."}
+
+### Cambio exitoso de contraseña
+POST {{baseUrl}}/auth/cambiar-password
+Content-Type: application/json
+Accept: application/json
+
+{
+  "password_actual": "Password123!",
+  "password_nueva": "NuevaPassword456!"
+}
+
+# Respuesta esperada:
+# HTTP/1.1 200 OK
+# {"mensaje": "Contraseña actualizada exitosamente."}
+
+### ------------------------------------------------------------------------------
+### Caso C-08: Cierre de sesión (Logout limpiando cookie HttpOnly)
+### ------------------------------------------------------------------------------
+POST {{baseUrl}}/auth/logout
+Accept: application/json
+
+# Respuesta esperada:
+# HTTP/1.1 200 OK
+# Set-Cookie: access_token=; Max-Age=0; Path=/; SameSite=lax

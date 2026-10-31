@@ -1,0 +1,42 @@
+### ==============================================================================
+### 01_health.http — Casos Oficiales C-01 y C-02
+### Monitoreo de Estado y Salud del Servicio Web y Base de Datos
+### ==============================================================================
+
+@baseUrl = http://localhost:8000
+
+### ------------------------------------------------------------------------------
+### Caso C-01: Liveness Probe (Verificación de proceso activo sin consulta a DB)
+### ------------------------------------------------------------------------------
+GET {{baseUrl}}/health/live
+Accept: application/json
+
+# Respuesta esperada:
+# HTTP/1.1 200 OK
+# Content-Type: application/json
+#
+# {
+#   "status": "live"
+# }
+
+### ------------------------------------------------------------------------------
+### Caso C-02: Readiness Probe (Verificación de conectividad activa a PostgreSQL)
+### ------------------------------------------------------------------------------
+GET {{baseUrl}}/health/ready
+Accept: application/json
+
+# Respuesta esperada (con base de datos operativa):
+# HTTP/1.1 200 OK
+# Content-Type: application/json
+#
+# {
+#   "status": "ready"
+# }
+#
+# Respuesta esperada (si la base de datos no está disponible):
+# HTTP/1.1 503 Service Unavailable
+# Content-Type: application/json
+#
+# {
+#   "status": "database unavailable"
+# }
