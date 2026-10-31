@@ -7,31 +7,43 @@
 [![Alembic](https://img.shields.io/badge/Alembic-1.13-red.svg)](https://alembic.sqlalchemy.org/)
 [![Tests Passing](https://img.shields.io/badge/tests-81%2F81%20passing-brightgreen.svg)]()
 
-Backend asincrónico para la gestión de un taller mecánico automotriz, desarrollado para el **Trabajo Práctico (Capítulos 1 a 6)** de la cátedra de Programación.
+Backend asincrónico para la gestión de un taller mecánico automotriz, desarrollado para el **Trabajo Práctico (Capítulos 1 a 6)** de la cátedra de Programación III.
 
 La API implementa un modelo de dominio completo con autenticación segura, control de acceso basado en roles dinámico (RBAC), gestión de clientes, vehículos, repuestos, inventario con movimientos auditados, ciclo de vida de órdenes de trabajo, cálculo transaccional de totales y disparadores de base de datos para tablas de sólo agregado (*append-only*).
 
 ---
 
+## 🎓 Información Académica
+
+| Campo | Detalle |
+|---|---|
+| **Materia** | Programación III |
+| **Carrera** | TUP (Tecnicatura Universitaria en Programación) — 3er Cuatrimestre |
+| **Grupo** | **Localhost** — Comisión 3 |
+| **Integrantes** | • **Máximo Franco**<br>• **Andrés Novello**<br>• **Octavio Fiore** |
+
+---
+
 ## Índice
 
-1. [Características Principales](#-características-principales)
-2. [Stack Tecnológico](#-stack-tecnológico)
-3. [Arquitectura y Patrones](#-arquitectura-y-patrones)
-4. [Estructura del Proyecto](#-estructura-del-proyecto)
-5. [Puesta en Marcha](#-puesta-en-marcha)
+1. [Información Académica](#-información-académica)
+2. [Características Principales](#-características-principales)
+3. [Stack Tecnológico](#-stack-tecnológico)
+4. [Arquitectura y Patrones](#-arquitectura-y-patrones)
+5. [Estructura del Proyecto](#-estructura-del-proyecto)
+6. [Puesta en Marcha](#-puesta-en-marcha)
    - [Requisitos Previos](#requisitos-previos)
    - [Instalación y Configuración](#instalación-y-configuración)
    - [Migraciones de Base de Datos](#migraciones-de-base-de-datos)
    - [Poblado Inicial Canónico (Seed)](#poblado-inicial-canónico-seed)
    - [Ejecución del Servidor](#ejecución-del-servidor)
-6. [Usuarios y Credenciales de Prueba](#-usuarios-y-credenciales-de-prueba)
-7. [Suite de Pruebas y Verificación](#-suite-de-pruebas-y-verificación)
+7. [Usuarios y Credenciales de Prueba](#-usuarios-y-credenciales-de-prueba)
+8. [Suite de Pruebas y Verificación](#-suite-de-pruebas-y-verificación)
    - [Pruebas Automatizadas (Pytest)](#pruebas-automatizadas-pytest)
    - [Pruebas Interactivas (.http) y C-01 a C-19](#pruebas-interactivas-http-y-c-01-a-c-19)
    - [Disparadores Inmutables SQL](#disparadores-inmutables-sql)
-8. [Matriz de Casos Oficiales y Reglas de Negocio](#-matriz-de-casos-oficiales-y-reglas-de-negocio)
-9. [Roadmap de Changes Implementados](#-roadmap-de-changes-implementados)
+9. [Matriz de Casos Oficiales y Reglas de Negocio](#-matriz-de-casos-oficiales-y-reglas-de-negocio)
+10. [Roadmap de Changes Implementados](#-roadmap-de-changes-implementados)
 
 ---
 
